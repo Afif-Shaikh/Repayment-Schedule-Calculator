@@ -62,10 +62,10 @@
         let diffEMI = '';
 
         try {
-          const openingBalance = parseFloat(row[2]);
-          const principal = parseFloat(row[4]);
-          const actualInterest = parseFloat(row[5]);
-          const actualEMI = parseFloat(row[3]);
+          const openingBalance = parseFloat(row[2].replace(/,/g, ''));
+          const principal = parseFloat(row[4].replace(/,/g, ''));
+          const actualInterest = parseFloat(row[5].replace(/,/g, ''));
+          const actualEMI = parseFloat(row[3].replace(/,/g, ''));
 
           // Row 1 skipped
           if (i === 1 && prevRow) {
