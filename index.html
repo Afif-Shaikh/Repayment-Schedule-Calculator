@@ -22,7 +22,10 @@
 
   <script>
     function parseDate(str) {
-      const parts = str.trim().split('/');
+      // const parts = str.trim().split('/');
+      str = str.replace(/-/g, '/').trim();
+      const parts = str.split('/');
+      if (parts.length < 3) return null;
       let day = parts[0];
       let month = parts[1];
       let year = parts[2].length === 2 ? '20' + parts[2] : parts[2];
@@ -30,9 +33,28 @@
     }
 
      // Function to convert date format from dd-mm-yyyy to dd/mm/yyyy
-    function convertDateFormat(dateStr) {
-      return dateStr.split("-").length === 3 ? dateStr.replace(/-/g, '/') : dateStr;
+    // function convertDateFormat(dateStr) {
+    //   return dateStr.split("-").length === 3 ? dateStr.replace(/-/g, '/') : dateStr;
+    // }
+
+      // Column aliases for ANY bank
+  const alias = {
+    date: ["date", "installment date", "emi date", "value date", "due date"],
+    openingBalance: ["opening balance", "outstanding", "os balance", "opening", "opening bal", "ob"],
+    principal: ["principal", "principal paid", "prin", "principal Credit", "principal Debit"],
+    interest: ["interest", "interest paid", "int", "interest Credit", "interest Debit"],
+    emi: ["emi", "installment amount", "repayment", "payment", "total payment"]
+  };
+
+  // Find column index dynamically
+  function detectColumn(headers, aliasList) {
+    headers = headers.map(h => h.trim().toLowerCase());
+    const aliasLower = aliasList.map(a => a.toLowerCase());
+    for (let i = 0; i < headers.length; i++) {
+      if (aliasLower.includes(headers[i])) return i;
     }
+    return -1;
+  }
 
     function processData() {
       const raw = document.getElementById('inputData').value.trim();
@@ -47,10 +69,26 @@
       const headers = lines[0].split('\t').map(h => h.trim());
       const rows = lines.slice(1).map(line => line.split('\t').map(cell => cell.trim()));
 
-      if (headers.length < 8) {
-        alert("Please check the pasted data format. Expecting at least 8 columns.");
+      // if (headers.length < 8) {
+      //   alert("Please check the pasted data format. Expecting at least 8 columns.");
+      //   return;
+      // }
+      // Build dynamic column map
+    const colMap = {
+      date: detectColumn(headers, alias.date),
+      openingBalance: detectColumn(headers, alias.openingBalance),
+      principal: detectColumn(headers, alias.principal),
+      interest: detectColumn(headers, alias.interest),
+      emi: detectColumn(headers, alias.emi)
+    };
+
+    // Validate required columns
+    for (let key in colMap) {
+      if (colMap[key] === -1) {
+        alert(`Missing required column for: ${key.toUpperCase()}`);
         return;
       }
+    }
 
       let html = '<table class="table table-bordered table-striped"><thead><tr>';
       headers.forEach(h => html += `<th>${h}</th>`);
@@ -67,39 +105,73 @@
         let diffEMI = '';
 
         try {
-          const openingBalance = parseFloat(row[2].replace(/,/g, ''));
-          const principal = parseFloat(row[4].replace(/,/g, ''));
-          const actualInterest = parseFloat(row[5].replace(/,/g, ''));
-          const actualEMI = parseFloat(row[3].replace(/,/g, ''));
+          // const openingBalance = parseFloat(row[2].replace(/,/g, ''));
+          // const principal = parseFloat(row[4].replace(/,/g, ''));
+          // const actualInterest = parseFloat(row[5].replace(/,/g, ''));
+          // const actualEMI = parseFloat(row[3].replace(/,/g, ''));
+
+          const openingBalance = parseFloat(row[colMap.openingBalance]?.replace(/,/g, "")) || 0;
+          const principal = parseFloat(row[colMap.principal]?.replace(/,/g, "")) || 0;
+          const actualInterest = parseFloat(row[colMap.interest]?.replace(/,/g, "")) || 0;
+          const actualEMI = parseFloat(row[colMap.emi]?.replace(/,/g, "")) || 0;
+
+          // Convert dates
+          const currDate = parseDate(row[colMap.date]);
+          const prevDate = prevRow ? parseDate(prevRow[colMap.date]) : null;
 
           // Convert the installment date (2nd column, index 1) to dd/mm/yyyy format
-          row[1] = convertDateFormat(row[1]);
+          // row[1] = convertDateFormat(row[1]);
 
           // Row 1 skipped
-          if (i === 1 && prevRow) {
-            // First interest row: days = Date[2] - Date[1] + 1
-            const datePrev = parseDate(prevRow[1]);
-            const dateCurr = parseDate(row[1]);
-            calculatedDays = Math.floor((dateCurr - datePrev) / (1000 * 60 * 60 * 24)) + 1;
+          // if (i === 1 && prevRow) {
+          //   // First interest row: days = Date[2] - Date[1] + 1
+          //   const datePrev = parseDate(prevRow[1]);
+          //   const dateCurr = parseDate(row[1]);
+          //   calculatedDays = Math.floor((dateCurr - datePrev) / (1000 * 60 * 60 * 24)) + 1;
 
+          //   calculatedInterest = parseFloat(((openingBalance * interestRate * calculatedDays) / 365).toFixed(2));
+          //   diffInterest = parseFloat((calculatedInterest - actualInterest).toFixed(0));
+          // } else if (i > 1) {
+          //   if (i % 2 === 0) {
+          //     // EMI row — no days, no interest
+          //     calculatedDays = 0;
+          //     calculatedEMI = parseFloat((actualInterest + principal).toFixed(2));
+          //     diffEMI = parseFloat((calculatedEMI - actualEMI).toFixed(0));
+          //   } else {
+          //     // Interest row: days = Current - Previous + 1
+          //     const datePrev = parseDate(prevRow[1]);
+          //     const dateCurr = parseDate(row[1]);
+          //     calculatedDays = Math.floor((dateCurr - datePrev) / (1000 * 60 * 60 * 24)) + 1;
+
+          //     calculatedInterest = parseFloat(((openingBalance * interestRate * calculatedDays) / 365).toFixed(2));
+          //     diffInterest = parseFloat((calculatedInterest - actualInterest).toFixed(0));
+            // }
+          // }
+          if (i === 0) {
+          calculatedDays = "";
+        } else if (i === 1) {
+          // First interest row
+          if (currDate && prevDate) {
+            calculatedDays = Math.floor((currDate - prevDate) / (1000 * 60 * 60 * 24)) + 1;
             calculatedInterest = parseFloat(((openingBalance * interestRate * calculatedDays) / 365).toFixed(2));
-            diffInterest = parseFloat((calculatedInterest - actualInterest).toFixed(0));
-          } else if (i > 1) {
-            if (i % 2 === 0) {
-              // EMI row — no days, no interest
-              calculatedDays = 0;
-              calculatedEMI = parseFloat((actualInterest + principal).toFixed(2));
-              diffEMI = parseFloat((calculatedEMI - actualEMI).toFixed(0));
-            } else {
-              // Interest row: days = Current - Previous + 1
-              const datePrev = parseDate(prevRow[1]);
-              const dateCurr = parseDate(row[1]);
-              calculatedDays = Math.floor((dateCurr - datePrev) / (1000 * 60 * 60 * 24)) + 1;
-
+            diffInterest = (calculatedInterest - actualInterest).toFixed(0);
+          }
+        } else {
+          // For all following rows
+          if (i % 2 === 0) {
+            // EMI row
+            calculatedDays = 0;
+            calculatedEMI = (principal + actualInterest).toFixed(2);
+            diffEMI = (calculatedEMI - actualEMI).toFixed(0);
+          } else {
+            // Interest row
+            if (currDate && prevDate) {
+              calculatedDays = Math.floor((currDate - prevDate) / (1000 * 60 * 60 * 24)) + 1;
               calculatedInterest = parseFloat(((openingBalance * interestRate * calculatedDays) / 365).toFixed(2));
-              diffInterest = parseFloat((calculatedInterest - actualInterest).toFixed(0));
+              diffInterest = (calculatedInterest - actualInterest).toFixed(0);
             }
           }
+        }
         } catch (err) {
           console.warn(`Error on row ${i + 1}:`, err);
         }
