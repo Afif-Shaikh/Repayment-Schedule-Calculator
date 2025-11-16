@@ -154,7 +154,7 @@
           if (currDate && prevDate) {
             calculatedDays = Math.floor((currDate - prevDate) / (1000 * 60 * 60 * 24)) + 1;
             calculatedInterest = parseFloat(((openingBalance * interestRate * calculatedDays) / 365).toFixed(2));
-            diffInterest = (calculatedInterest - actualInterest).toFixed(0);
+            diffInterest = (calculatedInterest - actualInterest).toFixed(2);
           }
         } else {
           // For all following rows
@@ -162,13 +162,13 @@
             // EMI row
             calculatedDays = 0;
             calculatedEMI = (principal + actualInterest).toFixed(2);
-            diffEMI = (calculatedEMI - actualEMI).toFixed(0);
+            diffEMI = (calculatedEMI - actualEMI).toFixed(2);
           } else {
             // Interest row
             if (currDate && prevDate) {
               calculatedDays = Math.floor((currDate - prevDate) / (1000 * 60 * 60 * 24)) + 1;
               calculatedInterest = parseFloat(((openingBalance * interestRate * calculatedDays) / 365).toFixed(2));
-              diffInterest = (calculatedInterest - actualInterest).toFixed(0);
+              diffInterest = (calculatedInterest - actualInterest).toFixed(2);
             }
           }
         }
